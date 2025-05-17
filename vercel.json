@@ -1,25 +1,14 @@
 {
-    "version": 2,
     "builds": [
         {
-            "src": "vercel_app.py",
-            "use": "@vercel/python",
-            "config": {
-                "runtime": "python3.9",
-                "maxLambdaSize": "15mb",
-                "buildCommand": "chmod +x build.sh && ./build.sh"
-            }
+            "src": "app.py",
+            "use": "@vercel/python"
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "vercel_app.py"
+            "dest": "app.py"
         }
-    ],
-    "env": {
-        "PYTHONPATH": ".",
-        "STREAMLIT_SERVER_PORT": "8080",
-        "STREAMLIT_SERVER_ADDRESS": "0.0.0.0"
-    }
+    ]
 } 
