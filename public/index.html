@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diabetes Risk Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 200px;
+            padding: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Diabetes Risk Predictor</h1>
+    <div class="form-group">
+        <label for="pregnancies">Number of Pregnancies:</label>
+        <input type="number" id="pregnancies" min="0" value="0">
+    </div>
+    <div class="form-group">
+        <label for="glucose">Glucose Level:</label>
+        <input type="number" id="glucose" min="0" value="85">
+    </div>
+    <div class="form-group">
+        <label for="blood_pressure">Blood Pressure:</label>
+        <input type="number" id="blood_pressure" min="0" value="66">
+    </div>
+    <div class="form-group">
+        <label for="skin_thickness">Skin Thickness:</label>
+        <input type="number" id="skin_thickness" min="0" value="29">
+    </div>
+    <div class="form-group">
+        <label for="insulin">Insulin Level:</label>
+        <input type="number" id="insulin" min="0" value="0">
+    </div>
+    <div class="form-group">
+        <label for="bmi">BMI:</label>
+        <input type="number" id="bmi" step="0.1" value="26.6">
+    </div>
+    <div class="form-group">
+        <label for="diabetes_pedigree">Diabetes Pedigree Function:</label>
+        <input type="number" id="diabetes_pedigree" step="0.001" value="0.351">
+    </div>
+    <div class="form-group">
+        <label for="age">Age:</label>
+        <input type="number" id="age" min="0" value="31">
+    </div>
+    <button onclick="predict()">Predict</button>
+    <div id="result"></div>
+
+    <script>
+        async function predict() {
+            const features = [
+                parseFloat(document.getElementById('pregnancies').value),
+                parseFloat(document.getElementById('glucose').value),
+                parseFloat(document.getElementById('blood_pressure').value),
+                parseFloat(document.getElementById('skin_thickness').value),
+                parseFloat(document.getElementById('insulin').value),
+                parseFloat(document.getElementById('bmi').value),
+                parseFloat(document.getElementById('diabetes_pedigree').value),
+                parseFloat(document.getElementById('age').value)
+            ];
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ features: features })
+                });
+
+                const data = await response.json();
+                const resultDiv = document.getElementById('result');
+                
+                if (data.prediction === 1) {
+                    resultDiv.innerHTML = `<h3 style="color: red;">High Risk of Diabetes</h3>
+                        <p>Probability: ${(data.probability * 100).toFixed(2)}%</p>`;
+                } else {
+                    resultDiv.innerHTML = `<h3 style="color: green;">Low Risk of Diabetes</h3>
+                        <p>Probability: ${((1 - data.probability) * 100).toFixed(2)}%</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html> 
