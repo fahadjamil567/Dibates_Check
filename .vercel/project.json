@@ -1,0 +1,8 @@
+{
+    "buildCommand": "pip install -r requirements.txt",
+    "devCommand": "streamlit run app.py",
+    "framework": null,
+    "outputDirectory": ".",
+    "installCommand": "pip install -r requirements.txt",
+    "public": true
+} 
