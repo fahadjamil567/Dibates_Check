@@ -1,0 +1,14 @@
+{
+    "builds": [
+        {
+            "src": "app.py",
+            "use": "@streamlit/vercel-deploy"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "app.py"
+        }
+    ]
+} 
