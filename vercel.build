@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Install Python 3.9 if not available
+if ! command -v python3.9 &> /dev/null; then
+    apt-get update
+    apt-get install -y python3.9 python3.9-venv
+fi
+
+# Create virtual environment
+python3.9 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Make sure the model files are in place
+if [ ! -f "disease_model.joblib" ] || [ ! -f "disease_scaler.joblib" ]; then
+    echo "Error: Model files not found!"
+    exit 1
+fi 
