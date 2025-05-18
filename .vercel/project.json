@@ -1,6 +1,6 @@
 {
-    "buildCommand": "pip install -r requirements.txt",
-    "devCommand": "streamlit run app.py",
+    "buildCommand": "pip install -r requirements-vercel.txt",
+    "devCommand": null,
     "framework": null,
     "outputDirectory": ".",
     "installCommand": "pip install -r requirements.txt",
