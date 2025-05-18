@@ -1,12 +1,9 @@
 .git
-.env
 __pycache__
 *.pyc
+.env
 venv
-*.pth
-*.onnx
-*.joblib
-.env.*
+.venv
 ENV
 env
 *.egg-info
