@@ -1,11 +1,14 @@
-from fastapi import FastAPI
+from flask import Flask
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/")
-async def root():
+@app.route('/')
+def home():
     return {"message": "Disease Detection API"}
 
-@app.get("/health")
-async def health():
-    return {"status": "healthy"} 
+@app.route('/health')
+def health():
+    return {"status": "healthy"}
+
+if __name__ == '__main__':
+    app.run() 
