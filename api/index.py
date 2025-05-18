@@ -25,16 +25,17 @@ def preprocess_image(image):
     # Convert to numpy array and normalize
     img_array = np.array(image).astype(np.float32) / 255.0
     
-    # Simple feature extraction - average color values
-    features = np.mean(img_array, axis=(0, 1))
-    
-    return features
+    return img_array
 
-@app.get("/api/health")
+@app.get("/")
+async def root():
+    return {"message": "Disease Detection API"}
+
+@app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/api/predict")
+@app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     # Read and process the image
     contents = await file.read()
@@ -43,18 +44,15 @@ async def predict(file: UploadFile = File(...)):
     # Preprocess image
     features = preprocess_image(image)
     
-    # Simple rule-based prediction using color values
-    # If the average red channel is higher than others, classify as diseased
-    prediction = 1 if features[0] > np.mean(features[1:]) else 0
+    # Simple mock prediction based on average pixel values
+    avg_color = np.mean(features, axis=(0, 1))
+    prediction = 1 if avg_color[0] > np.mean(avg_color[1:]) else 0
     
-    # Calculate simple probabilities based on color channel differences
-    diff = np.abs(features[0] - np.mean(features[1:]))
-    prob = np.clip(0.5 + diff, 0.1, 0.9)
+    # Calculate probabilities based on color differences
+    diff = float(np.abs(avg_color[0] - np.mean(avg_color[1:])))
+    prob = min(max(0.5 + diff, 0.1), 0.9)
     
-    if prediction == 1:
-        probabilities = [1 - prob, prob]
-    else:
-        probabilities = [prob, 1 - prob]
+    probabilities = [1 - prob, prob] if prediction == 1 else [prob, 1 - prob]
     
     return {
         "prediction": prediction,

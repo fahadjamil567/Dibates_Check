@@ -1,6 +1,6 @@
-fastapi>=0.104.1
-uvicorn>=0.24.0
-python-multipart>=0.0.6
-Pillow>=10.1.0
-numpy>=1.26.2
+fastapi==0.68.0
+uvicorn==0.14.0
+python-multipart==0.0.5
+Pillow==8.3.1
+numpy==1.21.1
 --no-binary :all: 
