@@ -221,12 +221,20 @@
             formData.append('file', imageInput.files[0]);
 
             try {
-                const response = await fetch('/predict', {
+                const response = await fetch('/api/predict', {
                     method: 'POST',
                     body: formData
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
                 
                 // Update UI with results
                 resultSection.style.display = 'block';
