@@ -1,12 +1,14 @@
 {
     "version": 2,
+    "buildCommand": "chmod +x build.sh && ./build.sh",
     "builds": [
         {
             "src": "api/index.py",
             "use": "@vercel/python",
             "config": {
                 "maxLambdaSize": "15mb",
-                "runtime": "python3.9"
+                "runtime": "python3.12",
+                "installCommand": "pip install --no-cache-dir --no-deps -r requirements-vercel.txt && pip install --no-cache-dir -r requirements-vercel.txt"
             }
         },
         {

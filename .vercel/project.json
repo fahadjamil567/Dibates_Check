@@ -1,8 +1,9 @@
 {
-    "buildCommand": "python -m pip install --no-cache-dir -r requirements-vercel.txt",
+    "buildCommand": null,
     "devCommand": null,
     "framework": null,
     "outputDirectory": ".",
-    "installCommand": null,
-    "public": true
+    "installCommand": "pip install --no-cache-dir --no-deps -r requirements-vercel.txt && pip install --no-cache-dir -r requirements-vercel.txt",
+    "public": true,
+    "cleanUrls": true
 } 
