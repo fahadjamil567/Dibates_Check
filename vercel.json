@@ -3,11 +3,7 @@
     "builds": [
         {
             "src": "api/index.py",
-            "use": "@vercel/python",
-            "config": {
-                "runtime": "python3.7",
-                "pip": ["--no-cache-dir"]
-            }
+            "use": "@vercel/python"
         },
         {
             "src": "public/**",

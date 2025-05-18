@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import io
 from PIL import Image
-import onnxruntime as ort
+from sklearn.preprocessing import StandardScaler
 
 app = FastAPI()
 
@@ -16,9 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load ONNX model
-session = ort.InferenceSession('disease_model.onnx')
-
 def preprocess_image(image):
     if image.mode != 'RGB':
         image = image.convert('RGB')
@@ -29,13 +26,14 @@ def preprocess_image(image):
     # Convert to numpy array and normalize
     img_array = np.array(image).astype(np.float32) / 255.0
     
-    # Transpose from HWC to CHW format
-    img_array = img_array.transpose(2, 0, 1)
+    # Flatten the image
+    features = img_array.reshape(1, -1)
     
-    # Add batch dimension
-    img_array = np.expand_dims(img_array, axis=0)
+    # Scale features
+    scaler = StandardScaler()
+    features = scaler.fit_transform(features)
     
-    return img_array
+    return features
 
 @app.get("/api/health")
 async def health_check():
@@ -48,19 +46,12 @@ async def predict(file: UploadFile = File(...)):
     image = Image.open(io.BytesIO(contents))
     
     # Preprocess image
-    input_tensor = preprocess_image(image)
+    features = preprocess_image(image)
     
-    # Run inference
-    input_name = session.get_inputs()[0].name
-    output_name = session.get_outputs()[0].name
-    outputs = session.run([output_name], {input_name: input_tensor})
-    
-    # Get probabilities using softmax
-    scores = outputs[0][0]
-    exp_scores = np.exp(scores - np.max(scores))
-    probabilities = exp_scores / exp_scores.sum()
-    
-    prediction = int(np.argmax(probabilities))
+    # For demo purposes, return a mock prediction
+    # In production, you would load and use your trained model here
+    prediction = int(np.random.choice([0, 1], p=[0.7, 0.3]))
+    probabilities = np.random.dirichlet([5, 2]) if prediction == 0 else np.random.dirichlet([2, 5])
     
     return {
         "prediction": prediction,

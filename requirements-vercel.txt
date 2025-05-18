@@ -1,6 +1,6 @@
-fastapi==0.65.2
-uvicorn==0.14.0
-python-multipart==0.0.5
-Pillow==8.2.0
-numpy==1.19.5
-onnxruntime==1.7.0 
+fastapi==0.95.0
+uvicorn==0.21.0
+python-multipart==0.0.6
+Pillow==9.5.0
+numpy==1.24.3
+scikit-learn==1.2.2 
