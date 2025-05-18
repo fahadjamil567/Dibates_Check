@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import io
 from PIL import Image
-from sklearn.preprocessing import StandardScaler
 
 app = FastAPI()
 
@@ -26,12 +25,8 @@ def preprocess_image(image):
     # Convert to numpy array and normalize
     img_array = np.array(image).astype(np.float32) / 255.0
     
-    # Flatten the image
-    features = img_array.reshape(1, -1)
-    
-    # Scale features
-    scaler = StandardScaler()
-    features = scaler.fit_transform(features)
+    # Simple feature extraction - average color values
+    features = np.mean(img_array, axis=(0, 1))
     
     return features
 
@@ -48,10 +43,18 @@ async def predict(file: UploadFile = File(...)):
     # Preprocess image
     features = preprocess_image(image)
     
-    # For demo purposes, return a mock prediction
-    # In production, you would load and use your trained model here
-    prediction = int(np.random.choice([0, 1], p=[0.7, 0.3]))
-    probabilities = np.random.dirichlet([5, 2]) if prediction == 0 else np.random.dirichlet([2, 5])
+    # Simple rule-based prediction using color values
+    # If the average red channel is higher than others, classify as diseased
+    prediction = 1 if features[0] > np.mean(features[1:]) else 0
+    
+    # Calculate simple probabilities based on color channel differences
+    diff = np.abs(features[0] - np.mean(features[1:]))
+    prob = np.clip(0.5 + diff, 0.1, 0.9)
+    
+    if prediction == 1:
+        probabilities = [1 - prob, prob]
+    else:
+        probabilities = [prob, 1 - prob]
     
     return {
         "prediction": prediction,
