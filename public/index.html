@@ -1,112 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Diabetes Risk Predictor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input {
-            width: 200px;
-            padding: 5px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <h1>Diabetes Risk Predictor</h1>
-    <div class="form-group">
-        <label for="pregnancies">Number of Pregnancies:</label>
-        <input type="number" id="pregnancies" min="0" value="0">
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Disease Detection System</h1>
+        
+        <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-upload">
+                    Upload an image for analysis
+                </label>
+                <input type="file" 
+                       id="image-upload" 
+                       accept="image/*"
+                       class="w-full p-2 border rounded-lg">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="preview-container">
+                    <h2 class="text-xl font-semibold mb-4">Uploaded Image</h2>
+                    <img id="preview" class="w-full h-64 object-cover rounded-lg border" style="display: none;">
+                </div>
+
+                <div class="results-container">
+                    <h2 class="text-xl font-semibold mb-4">Results</h2>
+                    <div id="results" class="hidden">
+                        <div id="prediction-status" class="p-4 mb-4 rounded-lg text-white"></div>
+                        <div class="mb-4">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="loading" class="hidden">
+                        <div class="flex items-center justify-center">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                        </div>
+                        <p class="text-center mt-4 text-gray-600">Analyzing image...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="form-group">
-        <label for="glucose">Glucose Level:</label>
-        <input type="number" id="glucose" min="0" value="85">
-    </div>
-    <div class="form-group">
-        <label for="blood_pressure">Blood Pressure:</label>
-        <input type="number" id="blood_pressure" min="0" value="66">
-    </div>
-    <div class="form-group">
-        <label for="skin_thickness">Skin Thickness:</label>
-        <input type="number" id="skin_thickness" min="0" value="29">
-    </div>
-    <div class="form-group">
-        <label for="insulin">Insulin Level:</label>
-        <input type="number" id="insulin" min="0" value="0">
-    </div>
-    <div class="form-group">
-        <label for="bmi">BMI:</label>
-        <input type="number" id="bmi" step="0.1" value="26.6">
-    </div>
-    <div class="form-group">
-        <label for="diabetes_pedigree">Diabetes Pedigree Function:</label>
-        <input type="number" id="diabetes_pedigree" step="0.001" value="0.351">
-    </div>
-    <div class="form-group">
-        <label for="age">Age:</label>
-        <input type="number" id="age" min="0" value="31">
-    </div>
-    <button onclick="predict()">Predict</button>
-    <div id="result"></div>
 
     <script>
-        async function predict() {
-            const features = [
-                parseFloat(document.getElementById('pregnancies').value),
-                parseFloat(document.getElementById('glucose').value),
-                parseFloat(document.getElementById('blood_pressure').value),
-                parseFloat(document.getElementById('skin_thickness').value),
-                parseFloat(document.getElementById('insulin').value),
-                parseFloat(document.getElementById('bmi').value),
-                parseFloat(document.getElementById('diabetes_pedigree').value),
-                parseFloat(document.getElementById('age').value)
-            ];
+        let chart = null;
+
+        document.getElementById('image-upload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show preview
+            const preview = document.getElementById('preview');
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+
+            // Show loading
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
 
             try {
-                const response = await fetch('/predict', {
+                const response = await fetch('/api/predict', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ features: features })
+                    body: formData
                 });
 
                 const data = await response.json();
-                const resultDiv = document.getElementById('result');
                 
+                // Hide loading
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').classList.remove('hidden');
+
+                // Update prediction status
+                const statusDiv = document.getElementById('prediction-status');
                 if (data.prediction === 1) {
-                    resultDiv.innerHTML = `<h3 style="color: red;">High Risk of Diabetes</h3>
-                        <p>Probability: ${(data.probability * 100).toFixed(2)}%</p>`;
+                    statusDiv.classList.add('bg-red-500');
+                    statusDiv.classList.remove('bg-green-500');
+                    statusDiv.textContent = '⚠️ Disease Detected';
                 } else {
-                    resultDiv.innerHTML = `<h3 style="color: green;">Low Risk of Diabetes</h3>
-                        <p>Probability: ${((1 - data.probability) * 100).toFixed(2)}%</p>`;
+                    statusDiv.classList.add('bg-green-500');
+                    statusDiv.classList.remove('bg-red-500');
+                    statusDiv.textContent = '✅ No Disease Detected';
                 }
+
+                // Update chart
+                if (chart) {
+                    chart.destroy();
+                }
+
+                const ctx = document.getElementById('probabilityChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Healthy', 'Diseased'],
+                        datasets: [{
+                            data: [
+                                data.healthy_probability * 100,
+                                data.diseased_probability * 100
+                            ],
+                            backgroundColor: ['#10B981', '#EF4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Prediction Probabilities (%)'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+
             } catch (error) {
-                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Error:', error);
+                document.getElementById('loading').classList.add('hidden');
+                alert('Error analyzing image. Please try again.');
             }
-        }
+        });
     </script>
 </body>
 </html> 

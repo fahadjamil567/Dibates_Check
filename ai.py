@@ -1,129 +1,168 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import cv2
+import os
 import joblib
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 # Set random seed for reproducibility
+torch.manual_seed(42)
 np.random.seed(42)
 
-def plot_confusion_matrix(y_true, y_pred, title):
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    plt.title(title)
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.savefig(f'{title.lower().replace(" ", "_")}.png')
-    plt.close()
+class DiseaseDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        self.classes = ['healthy', 'diseased']
+        self.images = []
+        self.labels = []
+        
+        # Load images and labels
+        for class_idx, class_name in enumerate(self.classes):
+            class_dir = os.path.join(root_dir, class_name)
+            for img_name in os.listdir(class_dir):
+                img_path = os.path.join(class_dir, img_name)
+                self.images.append(img_path)
+                self.labels.append(class_idx)
+    
+    def __len__(self):
+        return len(self.images)
+    
+    def __getitem__(self, idx):
+        img_path = self.images[idx]
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        label = self.labels[idx]
+        
+        if self.transform:
+            image = self.transform(image)
+        
+        return image, label
 
-def plot_feature_importance(model, feature_names, title):
-    importances = model.feature_importances_
-    indices = np.argsort(importances)[::-1]
-    plt.figure(figsize=(10, 6))
-    plt.title(f"Feature Importances ({title})")
-    plt.bar(range(len(importances)), importances[indices])
-    plt.xticks(range(len(importances)), [feature_names[i] for i in indices], rotation=45)
+class DiseaseNet(nn.Module):
+    def __init__(self):
+        super(DiseaseNet, self).__init__()
+        self.conv1 = nn.Conv2d(3, 32, 3)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(32, 64, 3)
+        self.conv3 = nn.Conv2d(64, 64, 3)
+        self.fc1 = nn.Linear(64 * 6 * 6, 64)
+        self.dropout = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(64, 2)
+        
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        x = self.pool(torch.relu(self.conv3(x)))
+        x = x.view(-1, 64 * 6 * 6)
+        x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x
+
+def train_model(model, train_loader, criterion, optimizer, device, num_epochs=20):
+    model.train()
+    train_losses = []
+    train_accs = []
+    
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        correct = 0
+        total = 0
+        
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+        
+        epoch_loss = running_loss / len(train_loader)
+        epoch_acc = 100 * correct / total
+        train_losses.append(epoch_loss)
+        train_accs.append(epoch_acc)
+        
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
+    
+    return train_losses, train_accs
+
+def plot_training_history(losses, accs):
+    plt.figure(figsize=(12, 4))
+    
+    plt.subplot(1, 2, 1)
+    plt.plot(losses)
+    plt.title('Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(accs)
+    plt.title('Training Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy (%)')
+    
     plt.tight_layout()
-    plt.savefig(f'feature_importance_{title.lower().replace(" ", "_")}.png')
+    plt.savefig('training_history.png')
     plt.close()
 
-# Load and prepare the dataset
-print("Loading Diabetes dataset...")
-# Pima Indians Diabetes Dataset
-data = pd.read_csv('https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv', 
-                  names=['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 
-                        'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age', 'Outcome'])
+def main():
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    
+    # Define transforms
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                           std=[0.229, 0.224, 0.225])
+    ])
+    
+    # Create dataset and dataloader
+    dataset = DiseaseDataset('train_images', transform=transform)
+    train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+    
+    # Create model, criterion, and optimizer
+    model = DiseaseNet().to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters())
+    
+    # Train the model
+    print("Training the model...")
+    losses, accs = train_model(model, train_loader, criterion, optimizer, device)
+    
+    # Plot training history
+    plot_training_history(losses, accs)
+    
+    # Save the model
+    print("\nSaving model...")
+    torch.save(model.state_dict(), 'disease_model.pth')
+    
+    # Create and save a scaler for preprocessing
+    print("Creating and saving scaler...")
+    scaler = StandardScaler()
+    sample_images = []
+    for images, _ in train_loader:
+        sample_images.append(images.numpy().reshape(images.shape[0], -1))
+        break
+    scaler.fit(sample_images[0])
+    joblib.dump(scaler, 'disease_scaler.joblib')
+    
+    print("\nTraining complete! Model and scaler have been saved.")
+    print("- Model saved as 'disease_model.pth'")
+    print("- Scaler saved as 'disease_scaler.joblib'")
+    print("- Training history plot saved as 'training_history.png'")
 
-# Prepare features and target
-X = data.drop('Outcome', axis=1)
-y = data['Outcome']
-feature_names = X.columns
-
-# Split the data with stratification
-print("Splitting dataset...")
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-
-# Create a pipeline with preprocessing and model
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
-
-# Define parameter grid
-param_grid = {
-    'n_estimators': [100, 200],
-    'max_depth': [10, 15],
-    'min_samples_split': [2, 4],
-    'min_samples_leaf': [1, 2],
-    'max_features': ['sqrt'],
-    'class_weight': ['balanced'],
-    'criterion': ['gini']
-}
-
-# Create and train the model
-print("Training model with GridSearchCV...")
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-model = RandomForestClassifier(random_state=42)
-grid_search = GridSearchCV(
-    estimator=model,
-    param_grid=param_grid,
-    cv=cv,
-    n_jobs=-1,
-    verbose=2,
-    scoring='accuracy'
-)
-
-# Fit the model
-grid_search.fit(X_train_scaled, y_train)
-best_model = grid_search.best_estimator_
-
-# Print training results
-print("\nBest parameters:", grid_search.best_params_)
-print("Best cross-validation score:", grid_search.best_score_)
-
-# Evaluate on test set
-y_pred = best_model.predict(X_test_scaled)
-test_accuracy = accuracy_score(y_test, y_pred)
-print("\nTest set accuracy:", test_accuracy)
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred))
-
-# Plot confusion matrix
-plot_confusion_matrix(y_test, y_pred, "Diabetes Prediction Model")
-
-# Plot feature importance
-plot_feature_importance(best_model, feature_names, "Diabetes Prediction")
-
-# Save the model and scaler
-print("\nSaving model and scaler...")
-joblib.dump(best_model, 'disease_model.joblib')
-joblib.dump(scaler, 'disease_scaler.joblib')
-
-print("\nModel Training Summary:")
-print("-----------------------")
-print(f"Best CV Score: {grid_search.best_score_:.4f}")
-print(f"Test Accuracy: {test_accuracy:.4f}")
-print("\nBest Model Parameters:")
-for param, value in grid_search.best_params_.items():
-    print(f"{param}: {value}")
-
-# Create sample test cases
-print("\nCreating sample test cases...")
-sample_cases = pd.DataFrame([
-    [1, 85, 66, 29, 0, 26.6, 0.351, 31],    # Healthy case
-    [6, 148, 72, 35, 0, 33.6, 0.627, 50],   # Diabetic case
-    [3, 111, 58, 31, 44, 29.5, 0.430, 22],  # Borderline case
-], columns=feature_names)
-
-# Save sample cases
-sample_cases.to_csv('sample_cases.csv', index=False)
-print("\nSample test cases saved to 'sample_cases.csv'")
-
-print("\nTraining complete. Model and scaler saved as 'disease_model.joblib' and 'disease_scaler.joblib'")
-print("You can now use the model with the Streamlit app (app.py)")
+if __name__ == "__main__":
+    main()

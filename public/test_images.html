@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Test Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .image-container {
+            margin: 20px 0;
+        }
+        .download-all {
+            background-color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generate Test Images</h1>
+        <p>Click the buttons below to generate sample images for testing the disease detection model.</p>
+        
+        <div>
+            <button onclick="generateHealthy()">Generate Healthy Sample</button>
+            <button onclick="generateDiseased()">Generate Diseased Sample</button>
+            <button onclick="downloadAll()" class="download-all">Download All Images</button>
+        </div>
+        
+        <div class="image-container">
+            <h2>Generated Images:</h2>
+            <div id="images"></div>
+        </div>
+    </div>
+
+    <script>
+        const imageSize = 64;
+        let imageCount = 0;
+        
+        function createCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = imageSize;
+            canvas.height = imageSize;
+            canvas.style.width = '200px';  // Display larger
+            canvas.style.height = '200px';
+            return canvas;
+        }
+        
+        function generateHealthy() {
+            const canvas = createCanvas();
+            const ctx = canvas.getContext('2d');
+            
+            // Create base healthy tissue (light colored)
+            const baseColor = Math.floor(Math.random() * 40) + 200;  // 200-240
+            ctx.fillStyle = `rgb(${baseColor},${baseColor},${baseColor})`;
+            ctx.fillRect(0, 0, imageSize, imageSize);
+            
+            // Add subtle texture
+            for(let i = 0; i < imageSize; i += 4) {
+                for(let j = 0; j < imageSize; j += 4) {
+                    const variation = Math.floor(Math.random() * 20) - 10;
+                    const color = Math.min(255, Math.max(0, baseColor + variation));
+                    ctx.fillStyle = `rgb(${color},${color},${color})`;
+                    ctx.fillRect(i, j, 4, 4);
+                }
+            }
+            
+            addImageToPage(canvas, 'healthy');
+        }
+        
+        function generateDiseased() {
+            const canvas = createCanvas();
+            const ctx = canvas.getContext('2d');
+            
+            // Create base tissue
+            const baseColor = Math.floor(Math.random() * 40) + 180;  // 180-220
+            ctx.fillStyle = `rgb(${baseColor},${baseColor},${baseColor})`;
+            ctx.fillRect(0, 0, imageSize, imageSize);
+            
+            // Add dark spots (lesions)
+            const numSpots = Math.floor(Math.random() * 3) + 2;  // 2-4 spots
+            for(let i = 0; i < numSpots; i++) {
+                const x = Math.floor(Math.random() * (imageSize - 20)) + 10;
+                const y = Math.floor(Math.random() * (imageSize - 20)) + 10;
+                const radius = Math.floor(Math.random() * 10) + 5;  // 5-15
+                const color = Math.floor(Math.random() * 50) + 50;  // 50-100
+                
+                ctx.fillStyle = `rgb(${color},${color},${color})`;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            addImageToPage(canvas, 'diseased');
+        }
+        
+        function addImageToPage(canvas, type) {
+            imageCount++;
+            const container = document.createElement('div');
+            container.style.display = 'inline-block';
+            container.style.margin = '10px';
+            
+            const label = document.createElement('p');
+            label.textContent = `${type}_sample_${imageCount}.png`;
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download';
+            downloadBtn.onclick = () => downloadImage(canvas, label.textContent);
+            
+            container.appendChild(canvas);
+            container.appendChild(label);
+            container.appendChild(downloadBtn);
+            
+            document.getElementById('images').appendChild(container);
+        }
+        
+        function downloadImage(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function downloadAll() {
+            const canvases = document.querySelectorAll('canvas');
+            const labels = document.querySelectorAll('p');
+            
+            for(let i = 0; i < canvases.length; i++) {
+                downloadImage(canvases[i], labels[i].textContent);
+            }
+        }
+    </script>
+</body>
+</html> 
